@@ -324,43 +324,10 @@ Lemma trace_of_eta' : forall c,
 Proof.
   intros.
   rewrite (frob_eq (trace_of c)). simpl.
-  destruct (match classicT (stuck c) with
-  | left _ => tstop
-  | right H =>
-      let (e, H1) :=
-        indefinite_description event (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
-          (Morphisms.subrelation_proper Morphisms_Prop.ex_iff_morphism tt
-             (Morphisms.subrelation_respectful
-                (Morphisms.subrelation_refl (Morphisms.pointwise_relation event iff))
-                Morphisms.iff_impl_subrelation) (fun n : event => ~ (forall c' : cfg, ~ step c n c'))
-             (fun n : event => exists n0 : cfg, ~ ~ step c n n0)
-             (fun n : event => not_forall_ex_not cfg (fun n0 : cfg => ~ step c n n0))
-             (Morphisms.iff_impl_subrelation (~ (forall (n : event) (c' : cfg), ~ step c n c'))
-                (exists n : event, ~ (forall c' : cfg, ~ step c n c'))
-                (not_forall_ex_not event (fun n : event => forall c' : cfg, ~ step c n c')) H)) in
-      let (c', _) := indefinite_description cfg (fun n : cfg => ~ ~ step c e n) H1 in
-      if classicT (silent e)
-      then
-       match classicT (can_loop_silent c') with
-       | left _ => tsilent
-       | right Hc =>
-           match not_can_loop_silent c' Hc with
-           | left Hc1 =>
-               let (e', Hc3) :=
-                 indefinite_description event (fun e0 : event => exists c'0 : cfg, steps' c' [e0] c'0)
-                   Hc1 in
-               let (c'', _) := indefinite_description cfg (fun c'0 : cfg => steps' c' [e'] c'0) Hc3 in
-               tcons e' (trace_of c'')
-           | right Hc1 =>
-               let (c'', a) :=
-                 indefinite_description cfg (fun c'0 : cfg => steps' c' [] c'0 /\ stuck c'0) Hc1 in
-               match a with
-               | conj _ _ => tstop
-               end
-           end
-       end
-      else tcons e (trace_of c')
-  end); reflexivity.
+  match goal with
+  | |- match ?X with tstop => _ | tsilent => _ | tcons _ _ => _ end = _
+    => destruct X; reflexivity
+  end.
 Qed.
 
 
