@@ -1,4 +1,270 @@
+Require Import Relations.
+Require Import Classical.
+Require Import Omega.
 (* Add LoadPath ".". *)
+
+
+
+
+Section labels.
+
+Variable outputs : Type.
+Variable inputs : Type.
+
+
+Inductive label : Type :=
+ | inp : inputs -> label
+ | out : outputs -> label.
+
+
+End labels.
+
+
+Arguments inp [_] [_] _.
+Arguments out [_] [_] _.
+
+
+Section LTS.
+Structure LTS : Type := lts {
+  carrier : Type;
+  inputs : Type;
+  outputs : Type;
+  return_type : Type;
+  return_state : carrier -> return_type -> Prop;
+  trans : label outputs inputs -> relation carrier;
+  return_stops : forall l e e' v, return_state e v -> (trans l e e' -> False) }.
+
+
+Definition labels (T : LTS) := label (outputs T) (inputs T).
+
+End LTS.
+
+
+Coercion carrier : LTS >-> Sortclass.
+
+
+Arguments trans [_] _ _ _.
+Arguments return_state [_] _.
+
+
+
+Section LTS_definitions.
+Variable T : LTS.
+
+
+Definition is_input {outputs : Type} {inputs : Type} (l : label outputs inputs) := match l with
+ | inp _ => True
+ | _ => False
+end.
+
+
+
+Definition input_total := forall P Q (i : inputs T), trans (inp i) P Q -> forall (j : inputs T), exists Q', trans (inp j) P Q' .
+
+Definition determinate := forall (P Q Q' : T) (l l' : labels T), trans l P Q -> trans l' P Q' -> ((l = l' /\ Q = Q') \/ (is_input l /\ is_input l')).
+Definition determinate_inputs  := forall (P Q Q' : T) (i : inputs T), trans (inp i) P Q -> trans (inp i) P Q' -> Q = Q'.
+
+Definition stuck e :=  (forall (l : labels T) e', ~ trans l e e') /\ (forall v, ~ return_state e v).
+
+
+End LTS_definitions.
+
+Arguments stuck [_] _.
+
+
+Section simulations.
+Variable S : LTS.
+Variable T : LTS.
+Variable rel_inp : inputs S -> inputs T -> Prop.
+Variable rel_out : outputs S -> outputs T -> Prop.
+Variable rel_ret : return_type S -> return_type T -> Prop.
+Variable R : S -> T -> Prop.
+
+
+Definition rel_input_total := forall j, exists i, rel_inp i j.
+
+Definition partial_rel_input_total := forall se se' i0 j, trans (inp i0) se se' -> exists se'' i, rel_inp i j /\ trans (inp i) se se''.
+
+
+
+
+Definition forward_simulation : Prop :=
+ forall se te, R se te -> 
+    (forall sv, return_state se sv -> exists tv, return_state te tv /\ rel_ret sv tv)
+ /\ (forall tv, return_state te tv -> exists sv, return_state se sv /\ rel_ret sv tv)
+ /\ (forall se' so, trans (out so) se se' -> exists te', exists to, R se' te' /\ trans (out to) te te' /\ rel_out so to)
+ /\ (forall se' si, trans (inp si) se se' -> exists te', exists ti, R se' te' /\ trans (inp ti) te te' /\ rel_inp si ti).
+
+Definition backward_simulation : Prop := 
+ forall se te, R se te -> 
+    (forall tv, return_state te tv -> exists sv, return_state se sv /\ rel_ret sv tv)
+ /\ (forall te' to, trans (out to) te te' -> exists se', exists so, R se' te' /\ trans (out so) se se' /\ rel_out so to)
+ /\ (forall te' ti, trans (inp ti) te te' -> exists se', exists si, R se' te' /\ trans (inp si) se se' /\ rel_inp si ti).
+
+
+Definition locally_flippable (R : S -> T -> Prop) (se : S) (te : T) : Prop := 
+forall se' te' te'' si ti ti', 
+ trans (inp si) se se'
+ -> trans (inp ti) te te'
+ -> trans (inp ti') te te''
+ -> rel_inp si ti
+ -> rel_inp si ti'
+ -> R se' te''
+ -> exists si0 se0, rel_inp si0 ti /\ trans (inp si0) se se0 /\ R se0 te'.
+
+
+
+Definition flippable (R : S -> T -> Prop) := forall se te, R se te -> locally_flippable R se te.
+
+
+
+Definition stuck_respecting (R : S -> T -> Prop) := forall se te, R se te -> stuck se -> stuck te.
+
+
+
+
+
+End simulations.
+
+
+Lemma inp_total_rel_inp_total_partial : forall S T rel_inp, input_total S -> rel_input_total S T rel_inp  -> partial_rel_input_total S T rel_inp.
+intros.
+intros se se' si0 ti H'.
+destruct (H0 ti) as [si].
+destruct (H se se' si0) with si as [se''].
+assumption.
+exists se''. exists si.
+split; try assumption.
+Qed.
+
+
+Arguments forward_simulation [_] [_] _ _ _ _.
+
+Arguments backward_simulation [_] [_] _ _ _ _.
+
+Arguments flippable [_] [_] _ _.
+
+Arguments stuck_respecting [_] [_] _.
+
+
+
+
+
+Section flipping_theorem.
+Variable S : LTS.
+Variable T : LTS.
+Variable rel_inp : inputs S -> inputs T -> Prop.
+Variable rel_out : outputs S -> outputs T -> Prop.
+Variable rel_ret : return_type S -> return_type T -> Prop.
+Variable R : S -> T -> Prop.
+Hypothesis target_det : determinate T.
+Hypothesis source_total : partial_rel_input_total S T rel_inp.
+Hypothesis fwd : forward_simulation rel_inp rel_out rel_ret R.
+Hypothesis flipbl : flippable rel_inp R.
+Hypothesis stck : stuck_respecting R.
+
+
+Lemma stck_stck : forall se te te' l, R se te -> trans l te te' -> exists l' se', trans l' se se'.
+intros.
+Admitted.
+
+
+Theorem flip_theorem : backward_simulation rel_inp rel_out rel_ret R.
+intros se te Rst.
+split; try split.
++ apply fwd; assumption.
++ intros te' to tr.
+  destruct (stck_stck se te te' (out to)) as [l].
+  assumption.
+  assumption.
+  induction l.
+  - destruct H as [se' tr'].
+    exfalso.
+    destruct (fwd) with se te.
+    assumption.
+    destruct H0.
+    destruct H1.
+    destruct (H2 se' i) as [te''].
+    assumption.
+    destruct H3 as [ti].
+    destruct target_det with te te' te'' (out to : labels T) (inp ti : labels T).
+    assumption. apply H3.
+    * destruct H4.
+      inversion H4.
+    * destruct H4. inversion H4.
+  - destruct fwd with se te.
+    assumption.
+    destruct H1.
+    destruct H2.
+    destruct H as [se' H].
+    destruct (H2 se' o) as [te''].
+    assumption.
+    destruct H4 as [to'].
+    destruct target_det with te te' te'' (out to : labels T) (out to' : labels T).
+    * assumption.
+    * apply H4.
+    * destruct H5.
+      inversion H5; subst.
+      exists se'.
+      exists o.
+      split. apply H4.
+      split. assumption.
+      apply H4.
+    * destruct H5.
+      inversion H5.
++ intros te' ti tr.
+  destruct (stck_stck se te te' (inp ti)) as [l].
+  assumption.
+  assumption.
+  induction l.
+  - destruct H as [se' tr'].
+    destruct source_total with se se' i ti as [se''].
+    assumption.
+    destruct H as [si].
+    destruct fwd with se te.
+    assumption.
+    destruct H1.
+    destruct H2.
+    destruct (H3 se'' si) as [te''].
+    apply H.
+    destruct H4 as [ti'].
+    destruct flipbl with se te se'' te' te'' si ti ti' as [si0]; try assumption.
+    apply H.
+    apply H4.
+    apply H.
+    apply H4.
+    apply H4.
+    destruct H5 as [se0].
+    exists se0.
+    exists si0.
+    split; try split; try apply H5.
+  - destruct H as [se' tr'].
+    exfalso.
+    destruct (fwd) with se te.
+    assumption.
+    destruct H0.
+    destruct H1.
+    destruct (H1 se' o) as [te''].
+    assumption.
+    destruct H3 as [to].
+    destruct target_det with te te' te''  (inp ti : labels T) (out to : labels T).
+    assumption.  apply H3.
+    * destruct H4.
+      inversion H4.
+    * destruct H4. inversion H5.
+Qed.
+
+End flipping_theorem.
+
+
+
+
+
+
+
+(* SOURCE EXPRESSIONS, SOURCE LTS *)
+
+Section source.
 
 Inductive SExp :=
   SNat : nat -> SExp
@@ -10,12 +276,252 @@ Inductive SExp :=
 | SInBool : SExp
 | SInNat : SExp.
 
+
+Inductive SInput :=
+| SIBoo : bool -> SInput
+| SINat : nat -> SInput.
+
+Definition SLabel := label unit SInput.
+Definition SLInput (si : SInput) : SLabel := inp si.
+Definition SLSilent : SLabel := out tt.
+
+
+
+Inductive STrans : SLabel -> SExp -> SExp -> Prop :=
+ | STPlus : forall n m, STrans SLSilent (SPlus (SNat n) (SNat m)) (SNat (n+m))
+ | STPlus_left : forall se1 se1' se2 sl, STrans sl se1 se1' -> STrans sl (SPlus se1 se2) (SPlus se1' se2)
+ | STPlus_right : forall se se' sl n, STrans sl se se' -> STrans sl (SPlus (SNat n) se) (SPlus (SNat n) se')
+ | STTimes : forall n m, STrans SLSilent (STimes (SNat n) (SNat m)) (SNat (n*m))
+ | STTimes_left : forall se1 se1' se2 sl, STrans sl se1 se1' -> STrans sl (STimes se1 se2)  (STimes se1' se2)
+ | STTimes_right : forall se se' sl n, STrans sl se se' -> STrans sl (STimes (SNat n) se) (STimes (SNat n) se')
+ | STLe_left : forall se1 se1' se2 sl, STrans sl se1 se1' -> STrans sl (SLe se1 se2) (SLe se1' se2)
+ | STLe_right : forall n se2 se2' sl, STrans sl se2 se2' -> STrans sl (SLe (SNat n) se2) (SLe (SNat n) se2')
+ | STLe_true : forall n m, n <= m -> STrans  SLSilent (SLe (SNat n) (SNat m))  (SBool true)
+ | STLe_false : forall n m, n > m -> STrans  SLSilent (SLe (SNat n) (SNat m))  (SBool false)
+ | STIte_eval : forall se1 se1' se2 se3 sl, STrans sl se1  se1' -> STrans sl (SIte se1 se2 se3) (SIte se1' se2 se3)
+ | STIte_true : forall se2 se3, STrans SLSilent (SIte (SBool true) se2 se3) se2
+ | STIte_false : forall se2 se3, STrans SLSilent (SIte (SBool false) se2 se3)  se3
+ | STInBool : forall b, STrans (SLInput (SIBoo b)) SInBool (SBool b)
+ | STInNat : forall n, STrans (SLInput (SINat n))  SInNat (SNat n).
+
+
+
+Inductive SRetState : SExp -> SInput -> Prop :=
+ | SRetNat : forall n, SRetState (SNat n) (SINat n)
+ | SRetBool : forall b, SRetState (SBool b) (SIBoo b).
+
+Lemma SReturn_stops : forall sl se se' sv, SRetState se sv -> (STrans sl se se' -> False).
+intros.
+induction H0; try inversion H.
+Qed.
+
+
+Definition Slts := lts SExp SInput unit SInput SRetState STrans SReturn_stops.
+Definition SStuck (se : Slts) := stuck se.
+
+End source.
+
+Section source_typing.
+
+
+Inductive type :=
+  TyNat
+| TyBool.
+
+Inductive typing : SExp -> type -> Prop :=
+| type_nat : forall n, typing (SNat n) TyNat
+| type_bool : forall b, typing (SBool b) TyBool
+| type_plus : forall se1 se2,
+    typing se1 TyNat ->
+    typing se2 TyNat ->
+    typing (SPlus se1 se2) TyNat
+| type_times : forall se1 se2,
+    typing se1 TyNat ->
+    typing se2 TyNat ->
+    typing (STimes se1 se2) TyNat
+| type_hite : forall se1 se2 se3 t,
+    typing se1 TyBool ->
+    typing se2 t ->
+    typing se3 t ->
+    typing (SIte se1 se2 se3) t
+| type_hle : forall se1 se2,
+    typing se1 TyNat ->
+    typing se2 TyNat ->
+    typing (SLe se1 se2) TyBool
+| type_hinnat :
+    typing SInNat TyNat
+| type_hinbool :
+    typing SInBool TyBool.
+
+
+
+Lemma subject_reduction : forall se se' sl ty, typing se ty -> STrans sl se se' -> typing se' ty.
+Admitted.
+
+
+Lemma nonstck : forall (se : Slts), ~ stuck se -> (exists sv, SRetState se sv) \/ (exists sl se', STrans sl se se').
+intros se nstck.
+destruct (classic (exists sv, SRetState se sv)).
++ left. apply H.
++ right.
+  apply NNPP.
+  intro F. apply nstck.
+  split.
+  - intros l e'. intro F'. apply F.
+    exists l. exists e'. apply F'.
+  - intros v F'. apply H. exists v. apply F'.
+Qed.
+
+Lemma typed_notstuck : forall se ty, typing se ty -> ~ SStuck se.
+intros se ty typ stck.
+induction typ.
++ destruct stck as [ntr nret].
+  eapply nret. econstructor.
++ destruct stck as [ntr nret].
+  eapply nret; econstructor.
++ destruct (nonstck se1).
+  - intro F. apply IHtyp1. apply F.
+  - destruct H as [v ret].
+    inversion ret; subst.
+    destruct (nonstck se2).
+    * intro F. apply IHtyp2. apply F.
+    * destruct H as [v' ret'].
+      inversion ret'; subst.
+      destruct stck. destruct (H (SLSilent) (SNat (n+n0))).
+      constructor.
+      inversion typ2.
+    * destruct H as [sl H]. destruct H as [se' strans].
+      destruct stck. destruct (H sl (SPlus (SNat n) se')).
+      econstructor. assumption.
+    * inversion typ1.
+  - destruct H as [sl H]. destruct H as [se' strans].
+    destruct stck. destruct (H sl (SPlus se' se2)).
+    constructor. apply strans.
++ destruct (nonstck se1).
+  - intro F. apply IHtyp1. apply F.
+  - destruct H as [v ret].
+    inversion ret; subst.
+    destruct (nonstck se2).
+    * intro F. apply IHtyp2. apply F.
+    * destruct H as [v' ret'].
+      inversion ret'; subst.
+      destruct stck. destruct (H (SLSilent) (SNat (n*n0))).
+      constructor.
+      inversion typ2.
+    * destruct H as [sl H]. destruct H as [se' strans].
+      destruct stck. destruct (H sl (STimes (SNat n) se')).
+      econstructor. assumption.
+    * inversion typ1.
+  - destruct H as [sl H]. destruct H as [se' strans].
+    destruct stck. destruct (H sl (STimes se' se2)).
+    constructor. apply strans.
++ destruct (nonstck se1).
+  - intro F. apply IHtyp1. apply F.
+  - destruct H as [v ret].
+    inversion ret; subst.
+    inversion typ1.
+    destruct stck.
+    induction b.
+    * destruct (H SLSilent se2). constructor. 
+    * destruct (H SLSilent se3). constructor. 
+  - destruct H as [sl H]. destruct H as [se' strans].
+      destruct stck. destruct (H sl (SIte se' se2 se3)).
+      constructor. assumption.
++ destruct (nonstck se1).
+  - intro F. apply IHtyp1. apply F.
+  - destruct H as [v ret].
+    inversion ret; subst.
+    destruct (nonstck se2).
+    * intro F. apply IHtyp2. apply F.
+    * destruct H as [v' ret'].
+      inversion ret'; subst.
+      destruct stck.
+      destruct (classic (le n n0)).
+      destruct (H (SLSilent) (SBool true)).
+      constructor. assumption.
+      destruct (H (SLSilent) (SBool false)).
+      constructor. omega.
+      inversion typ2.
+    * destruct H as [sl H]. destruct H as [se' strans].
+      destruct stck. destruct (H sl (SLe (SNat n) se')).
+      apply STLe_right. assumption.
+    * inversion typ1.
+  - destruct H as [sl H]. destruct H as [se' strans].
+    destruct stck. destruct (H sl (SLe se' se2)).
+    constructor. apply strans.
++ destruct stck. destruct (H (inp (SINat 0)) (SNat 0)).
+  constructor.
++ destruct stck. destruct (H (inp (SIBoo true)) (SBool true)).
+  constructor.
+Qed.
+
+End source_typing.
+
+
+(* TARGET EXPRESSIONS, TARGET LTS *)
+
+Section target.
+
 Inductive TExp :=
   TNat : nat -> TExp
 | TPlus : TExp -> TExp -> TExp
 | TTimes : TExp -> TExp -> TExp
 | TIte : TExp -> TExp -> TExp -> TExp -> TExp
 | TIn : TExp.
+
+
+Inductive TInput :=
+| TINat : nat -> TInput.
+
+
+Definition TLabel := label unit TInput.
+
+Definition TLInput (ti : TInput) : TLabel := inp ti.
+
+
+Definition TLSilent : TLabel := out tt.
+
+Inductive TTrans : TLabel -> TExp -> TExp -> Prop :=
+ | TTPlus : forall n m, TTrans TLSilent (TPlus (TNat n) (TNat m))  (TNat (n+m))
+ | TTPlus_left : forall te1 te1' te2 tl, TTrans tl te1  te1' -> TTrans tl (TPlus te1 te2)  (TPlus te1' te2)
+ | TTPlus_right : forall te te' tl n, TTrans tl te  te' -> TTrans tl (TPlus (TNat n) te)  (TPlus (TNat n) te')
+ | TTTimes : forall n m, TTrans TLSilent (TTimes (TNat n) (TNat m))  (TNat (n*m))
+ | TTTimes_left : forall te1 te1' te2 tl, TTrans tl te1  te1' -> TTrans tl (TTimes te1 te2)  (TTimes te1' te2)
+ | TTTimes_right : forall te te' tl n, TTrans tl te  te' -> TTrans tl (TTimes (TNat n) te)  (TTimes (TNat n) te')
+ | TTIte_eval_left : forall te1 te1' te2 te3 te4 tl, TTrans tl te1  te1' -> TTrans tl (TIte te1 te2 te3 te4)  (TIte te1' te2 te3 te4)
+ | TTIte_eval_right : forall n te2 te2' te3 te4 tl, TTrans tl te2  te2' -> TTrans tl (TIte (TNat n) te2 te3 te4)  (TIte (TNat n) te2' te3 te4)
+ | TTIte_true : forall n m te3 te4, n <= m -> TTrans TLSilent (TIte (TNat n) (TNat m) te3 te4)  te3
+ | TTIte_false : forall  n m te3 te4, n > m -> TTrans TLSilent (TIte (TNat n) (TNat m) te3 te4)  te4
+ | TTIn : forall n, TTrans (TLInput (TINat n)) TIn (TNat n).
+
+Inductive TRetState : TExp -> TInput -> Prop :=
+ | TRetNat : forall n, TRetState (TNat n) (TINat n).
+
+Lemma TReturn_stops : forall tl te te' tv, TRetState te tv -> (TTrans tl te te' -> False).
+intros. induction H0; try inversion H.
+Qed.
+
+
+Definition Tlts := lts TExp TInput unit TInput TRetState TTrans TReturn_stops.
+
+
+Definition TStuck (te : Tlts) := stuck te.
+
+
+Lemma determinate_inputs_target : determinate_inputs Tlts.
+Admitted.
+
+Lemma determinate_target : determinate Tlts.
+Admitted.
+
+
+End target.
+
+
+(* COMPILER *)
+
+Section compiler.
+
 
 Fixpoint compile (se : SExp) : TExp :=
   match se with
@@ -30,18 +536,476 @@ Fixpoint compile (se : SExp) : TExp :=
   | SInNat => TIn
   end.
 
-Require Import List.
 
-(* source traces *)
+
+End compiler.
+
+
+
+(* The simulation relation, the relations between inputs/outputs, proving it can be flipped properties *)
+
+Section simulation_relation.
+
+
+
+
+Inductive rel_inp : inputs Slts -> inputs Tlts -> Prop := 
+ | rel_nat : forall n, rel_inp (SINat n) (TINat n)
+ | rel_true : forall n, n > 0 -> rel_inp (SIBoo true) (TINat n)
+ | rel_false : rel_inp (SIBoo false) (TINat 0).
+
+
+Inductive rel_out : unit -> unit -> Prop := silent_refl : rel_out tt tt.
+
+
+Lemma is_input_total : partial_rel_input_total Slts Tlts rel_inp.
+intros se se' si0 ti H.
+induction H.
+Admitted.
+
+
+Inductive simulation0 : Slts -> Tlts -> Prop :=
+ | SimNat : forall n, simulation0 (SNat n) (TNat n)
+ | SimTrue : forall n, n > 0 -> simulation0 (SBool true) (TNat n)
+ | SimFalse : simulation0 (SBool false) (TNat 0)
+ | SimPlus : forall se1 se2 te1 te2, simulation0 se1 te1 -> simulation0 se2 te2 -> simulation0 (SPlus se1 se2) (TPlus te1 te2)
+ | SimTimes : forall se1 se2 te1 te2, simulation0 se1 te1 -> simulation0 se2 te2 -> simulation0 (STimes se1 se2) (TTimes te1 te2)
+ | SimLe : forall se1 se2 te1 te2, simulation0 se1 te1 -> simulation0 se2 te2 -> simulation0 (SLe se1 se2) (TIte te1 te2 (TNat 1) (TNat 0))
+ | SimIte : forall se1 se2 se3 te1 te2 te3, simulation0 se1 te1 -> simulation0 se2 te2 -> simulation0 se3 te3 -> simulation0 (SIte se1 se2 se3) (TIte te1 (TNat 0) te3 te2)
+ | SimInBool : simulation0 SInBool TIn
+ | SimInNat : simulation0 SInNat TIn.
+
+Definition sim_typed : Slts -> Tlts -> Prop := fun se te => exists ty, typing se ty /\ simulation0 se te.
+ 
+
+Lemma sim_compile : forall se, simulation0 se (compile se).
+intro se.
+induction se; try constructor; try assumption.
+induction b; constructor. constructor.
+Qed.
+
+
+Ltac badtr := exfalso; try (eapply TReturn_stops; [econstructor| eassumption]); try (eapply SReturn_stops; [econstructor| eassumption]); 
+try (eapply SReturn_stops; [eapply SRetBool| eassumption]).
+
+
+Lemma simulation_allpositive : forall (se se' : Slts) (te te' : Tlts) n, n > 0 -> simulation0 se te -> STrans (inp (SIBoo true)) se se' -> TTrans (inp(TINat n)) te te' -> simulation0 se' te'.
+intros se se' te te' n pos sim. revert se' te'.
+induction sim; intros se' te' strans ttrans.
++ exfalso. eapply SReturn_stops. econstructor. apply strans.
++ exfalso. eapply TReturn_stops. econstructor. apply ttrans.
++ exfalso. eapply TReturn_stops. econstructor. eassumption.
++ inversion strans; subst.
+  inversion ttrans; subst.
+  - constructor. apply IHsim1; try assumption.
+    assumption.
+  - inversion sim1; subst.
+    * exfalso. eapply SReturn_stops. econstructor.  
+      eassumption.
+    * exfalso. eapply SReturn_stops. eapply SRetBool. apply H3.
+    * exfalso. eapply SReturn_stops. eapply SRetBool. apply H3.
+  - inversion ttrans; subst.
+    * inversion sim1. subst.
+      badtr.
+    * inversion sim1; subst.
+      constructor.
+      constructor.
+      apply IHsim2.
+      assumption.
+      assumption.
++ inversion strans; subst.
+  inversion ttrans; subst.
+  - constructor. apply IHsim1; try assumption.
+    assumption.
+  - inversion sim1; subst; badtr.
+  - inversion sim1; subst.
+    inversion ttrans; subst. badtr.
+      constructor.
+      constructor.
+      apply IHsim2.
+      assumption.
+      assumption.
++ inversion strans; subst.
+  inversion ttrans; subst.
+  - constructor. apply IHsim1; try assumption.
+    assumption.
+  - inversion ttrans; subst.
+   inversion sim1; subst; badtr.
+   inversion sim1; subst; badtr.
+  - inversion ttrans; subst.
+    * inversion sim1. subst.
+      badtr.
+    * inversion sim1; subst.
+      constructor.
+      constructor.
+      apply IHsim2.
+      assumption.
+      assumption.
++ inversion strans; subst.
+  inversion ttrans; subst.
+  - constructor. apply IHsim1; try assumption.
+    assumption. assumption.
+  - badtr.
++ inversion strans; subst.
+  inversion ttrans; subst. 
+  constructor. assumption.
++ inversion strans.
+Qed.
+
+
+Lemma is_flippable : flippable rel_inp simulation0.
+intros se te Rst se' te' te'' si ti ti' tsi tti tti' ri ri' Rst'.
+induction si. 
++ induction b.
+  - exists (SIBoo true). exists se'.
+    split. assumption.
+    split. assumption.
+    inversion ri. subst.
+    inversion ri'. subst.
+    eapply simulation_allpositive. 
+    apply H.
+    apply Rst.
+    apply tsi.
+    apply tti.
+  - inversion ri. subst.
+    inversion ri'. subst.
+    exists (SIBoo false). exists  se'.
+    split. constructor.
+    split. assumption.
+    destruct determinate_inputs_target with te te' te'' (TINat 0).
+    apply tti. apply tti'.
+    assumption.
++ inversion ri. subst. inversion ri'. subst.
+  exists (SINat n). exists se'.
+  split. assumption.
+  split. assumption.
+  destruct determinate_inputs_target with te te' te'' (TINat n).
+  apply tti. apply tti'.
+  assumption.
+Qed.
+
+
+Lemma is_stck_respecting : stuck_respecting sim_typed.
+intros se te simst stck.
+unfold sim_typed in simst.
+destruct simst as [ty H]. destruct H as [typ sim0].
+exfalso. 
+eapply typed_notstuck. 
+eassumption.
+apply stck.
+Qed.
+
+
+Lemma is_flippable_typed : flippable rel_inp sim_typed.
+intros se te Rst se' te' te'' si ti ti' tsi tti tti' ri ri' Rst'.
+destruct Rst as [ty Rst]. destruct Rst as [typ Rst].
+destruct Rst' as [ty' Rst']. destruct Rst' as [typ' Rst'].
+destruct is_flippable with se te se' te' te'' si ti ti' as [si0 H]; try assumption.
+destruct H as [se0 H].
+exists si0. exists se0.
+split. apply H.
+split. apply H.
+exists ty.
+split.
+eapply subject_reduction. apply typ. apply H.
+apply H.
+Qed.
+
+
+Lemma is_forward_sim : forward_simulation rel_inp rel_out rel_inp simulation0.
+intros se te Rst. induction Rst.
++ split; [|split; [|split]]; intros.
+  - exists (TINat n). split. econstructor. inversion H; subst. constructor.
+  - exists (SINat n). split; try constructor. inversion H; subst. constructor.
+  - badtr.
+  - badtr.
++ split; [|split; [|split]]; intros.
+  - exists (TINat n). split. econstructor. inversion H0; subst. constructor. assumption.
+  - exists (SIBoo true). split; try constructor. inversion H0; subst. constructor. assumption.
+  - badtr.
+  - badtr.
++ split; [|split; [|split]]; intros.
+  - exists (TINat 0). split. econstructor. inversion H; subst. constructor.
+  - exists (SIBoo false). split; try constructor. inversion H; subst. constructor.
+  - badtr.
+  - badtr.
++ split; [|split; [|split]]; intros.
+  - inversion H.
+  - inversion H.
+  - inversion H; subst.
+    * inversion Rst1; subst. inversion Rst2; subst.
+      exists (TNat (n+m)). exists tt.
+      split; try split.
+      constructor.
+      constructor.
+      constructor.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H2 se1' so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TPlus te' te2). exists to.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H2 se'0 so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TPlus te1 te'). exists to.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      apply TTPlus_right. apply H5.
+      apply H5.
+  - inversion H; subst.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H3 se1' si) as [te' HH]. assumption.
+      destruct HH as [ti H5].
+      exists (TPlus te' te2). exists ti.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H3 se'0 si) as [te' HH]. assumption.
+      destruct HH as [ti H5].
+      exists (TPlus te1 te'). exists ti.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      apply TTPlus_right. apply H5.
+      apply H5.
++ split; [|split; [|split]]; intros.
+  - inversion H.
+  - inversion H.
+  - inversion H; subst.
+    * inversion Rst1; subst. inversion Rst2; subst.
+      exists (TNat (n*m)). exists tt.
+      split; try split.
+      constructor.
+      constructor.
+      constructor.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H2 se1' so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TTimes te' te2). exists to.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H2 se'0 so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TTimes te1 te'). exists to.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      constructor. apply H5.
+      apply H5.
+  - inversion H; subst.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H3 se1' si) as [te' HH]. assumption.
+      destruct HH as [ti H5].
+      exists (TTimes te' te2). exists ti.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H3 se'0 si) as [te' HH]. assumption.
+      destruct HH as [ti H5].
+      exists (TTimes te1 te'). exists ti.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      constructor. apply H5.
+      apply H5.
++ split; [|split; [|split]]; intros.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - inversion H; subst.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H2 se1' so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TIte te' te2 (TNat 1) (TNat 0)). exists to.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H2 se2' so) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TIte te1 te' (TNat 1) (TNat 0)). exists to.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      constructor. apply H5.
+      apply H5.
+    * inversion Rst1; subst. inversion Rst2; subst.
+      exists (TNat 1). exists tt.
+      split; try split.
+      constructor.
+      constructor.
+      constructor.
+      omega.
+      constructor.
+    * inversion Rst1; subst. inversion Rst2; subst.
+      exists (TNat 0). exists tt.
+      split; try split.
+      constructor.
+      constructor.
+      omega.
+      constructor.
+  - inversion H; subst.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H3 se1' si) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TIte te' te2 (TNat 1) (TNat 0)). exists to.
+      split; try split.
+      constructor. apply H5. assumption.
+      constructor. apply H5.
+      apply H5.
+    * destruct IHRst2. destruct H1. destruct H2.
+      destruct (H3 se2' si) as [te' HH]. assumption.
+      destruct HH as [to H5].
+      exists (TIte te1 te' (TNat 1) (TNat 0)). exists to.
+      inversion Rst1. subst.
+      split; try split.
+      constructor. constructor. apply H5.
+      constructor. apply H5.
+      apply H5.
++ split; [|split; [|split]]; intros.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - inversion H; subst.
+    * destruct IHRst1. destruct H1. destruct H2.
+      destruct (H2 se1' so) as [te' HH]. assumption.
+      destruct HH as [to H6].
+      exists (TIte te' (TNat 0) te3 te2). exists to.
+      split; try split.
+      constructor. apply H6. assumption.
+      assumption. constructor. apply H6.
+      apply H6.
+    * inversion Rst1; subst.
+      exists te2. exists tt.
+      split; try split.
+      assumption.
+      constructor.
+      assumption.
+      constructor.
+    * inversion Rst1; subst.
+      exists te3. exists tt.
+      split; try split.
+      assumption.
+      constructor.
+      constructor.
+      constructor.
+  - inversion H; subst.
+    destruct IHRst1. destruct H1. destruct H2.
+    destruct (H3 se1' si) as [te' HH]. assumption.
+    destruct HH as [ti H6].
+    exists (TIte te' (TNat 0) te3 te2). exists ti.
+    split; try split.
+    constructor. apply H6. assumption.
+    assumption. constructor. apply H6.
+    apply H6.
++ split; [|split; [|split]]; intros.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - inversion H; subst.
+    induction b.
+    * exists (TNat 1).
+      exists (TINat 1).
+      split; try split; constructor.
+      omega. omega.
+    * exists (TNat 0).
+      exists (TINat 0).
+      split; try split; constructor.
++ split; [|split; [|split]]; intros.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - exfalso; inversion H.
+  - inversion H; subst.
+    exists (TNat n).
+    exists (TINat n).
+    split; try split; constructor.
+Qed.
+
+
+
+
+Lemma is_forward_sim_typed : forward_simulation rel_inp rel_out rel_inp sim_typed.
+intros se te Rst.
+destruct Rst as [ty H].
+destruct H as [typ sim0].
+destruct is_forward_sim with se te.
+apply sim0.
+destruct H0.
+destruct H1.
+split; try split; try split.
++ apply H.
++ apply H0.
++ intros.
+  destruct H1 with se' so as [te' ].
+  assumption.
+  destruct H4 as [to].
+  exists te'. exists to.
+  split; try split.
+  - exists ty.
+    split.
+    eapply subject_reduction; try eassumption.
+    apply H4.
+  - apply H4.
+  - apply H4.
++ intros.
+  destruct H2 with se' si as [te' ].
+  assumption.
+  destruct H4 as [ti].
+  exists te'. exists ti.
+  split; try split.
+  - exists ty.
+    split.
+    eapply subject_reduction; try eassumption.
+    apply H4.
+  - apply H4.
+  - apply H4.
+Qed.
+
+
+
+
+Lemma is_backward_sim : backward_simulation rel_inp rel_out rel_inp sim_typed.
+apply flip_theorem.
+apply determinate_target.
+apply is_input_total.
+apply is_forward_sim_typed.
+apply is_flippable_typed.
+apply is_stck_respecting.
+Qed.
+
+
+
+End simulation_relation.
+
+
+
+
+
+(* Big step semantics *)
+
+
+
+
+Require Import List.
+Import ListNotations.
+
 
 Inductive SResult :=
 | SRBool : bool -> SResult
 | SRNat : nat -> SResult
 | SRError : SResult.
 
-Inductive SInput :=
-| SIBoo : bool -> SInput
-| SINat : nat -> SInput.
+
 
 Definition STrace := (list SInput * SResult)%type.
 
@@ -49,12 +1013,18 @@ Definition STrace := (list SInput * SResult)%type.
 Inductive TResult :=
 | TRNat : nat -> TResult.
 
-Inductive TInput :=
-| TINat : nat -> TInput.
+
+
+(* source traces *)
+
+
 
 Definition TTrace := (list TInput * TResult)%type.
 
-Import ListNotations.
+(*
+Inductive ssem : SExp -> STrace -> Prop :=
+ | ssem_base : *)
+
 
 (* source semantics *)
 
@@ -156,6 +1126,9 @@ Inductive ssem : SExp -> STrace -> Prop :=
 (*     ssem SInBool ([SINat n], SRError) *)
 .
 
+
+
+
 Inductive tsem : TExp -> TTrace -> Prop :=
 | TSNat : forall n,
     tsem (TNat n) (nil, TRNat n)
@@ -185,6 +1158,11 @@ Inductive tsem : TExp -> TTrace -> Prop :=
     tsem (TIte le1 le2 le3 le4) (app ll1 (app ll2 ll4), TRNat n4)
 | TSInput : forall n,
     tsem TIn ([TINat n], TRNat n).
+
+
+
+
+
 
 Definition tildeInput (si : SInput) (ti : TInput) : bool :=
   match (si, ti) with
@@ -217,34 +1195,26 @@ Definition tilde (st : STrace) (tt : TTrace) : bool :=
   | _, _ => false
   end.
 
-Inductive type :=
-  TyNat
-| TyBool.
 
-Inductive typing : SExp -> type -> Prop :=
-| type_nat : forall n, typing (SNat n) TyNat
-| type_bool : forall b, typing (SBool b) TyBool
-| type_plus : forall se1 se2,
-    typing se1 TyNat ->
-    typing se2 TyNat ->
-    typing (SPlus se1 se2) TyNat
-| type_times : forall se1 se2,
-    typing se1 TyNat ->
-    typing se2 TyNat ->
-    typing (STimes se1 se2) TyNat
-| type_hite : forall se1 se2 se3 t,
-    typing se1 TyBool ->
-    typing se2 t ->
-    typing se3 t ->
-    typing (SIte se1 se2 se3) t
-| type_hle : forall se1 se2,
-    typing se1 TyNat ->
-    typing se2 TyNat ->
-    typing (SLe se1 se2) TyBool
-| type_hinnat :
-    typing SInNat TyNat
-| type_hinbool :
-    typing SInBool TyBool.
+Lemma step_bigstep_source : forall se se' sl st, STrans sl se se' -> ssem se st -> ssem se' st.
+intros se se' sl st trans sem.
+induction trans.
+inversion sem; subst.
+
+
+
+Lemma sstep_bigstep : forall se te st tt R, forward_simulation rel_inp rel_out rel_inp R -> R se te -> ssem se st -> tsem te tt -> tilde st tt = true.
+intros se te st tt R fwd Rst sst. revert Rst. revert fwd. revert tt te.
+induction sst; intros.
+unfold forward_simulation in fwd.
+
+
+
+(**** The Proofs correspond to a previous version, that did not use a forward 
+      simulation and f*****)
+
+
+
 
 Theorem type_correct :
   forall se : SExp,
