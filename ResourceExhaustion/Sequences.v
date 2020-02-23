@@ -352,11 +352,13 @@ Section Sequences_Traces.
 
   Definition irred (a: A) : Prop := forall b e, ~(R a e b).
 
-  (* Inductive behavior := *)
-  (* | Reactive : @stream E -> behavior *)
-  (* | Diverges : list E -> behavior *)
-  (* | Terminates : list E -> behavior *)
-  (* . *)
+  (*
+  Inductive behavior :=
+  | Reactive : @stream E -> behavior
+  | Diverges : list E -> behavior
+  | Terminates : list E -> behavior
+  .
+  *)
 
   (** ** Determinism properties for functional transition relations. *)
 
@@ -474,15 +476,17 @@ Section Sequences_Traces.
 
   (** A state cannot both diverge and terminate on an irreducible state. *)
 
-  (* Lemma infseq_star_inv: *)
-  (*   forall a b l s, star a l b -> infseq s a -> infseq (l++s) b. *)
-  (* Proof. *)
-  (*   induction 1; intros. *)
-  (* - auto. *)
-  (* - inversion H1; subst. *)
-  (*   assert (b = b0) by (eapply R_functional; eauto). subst b0. *)
-  (*   apply IHstar; auto. *)
-  (* Qed. *)
+  (*
+  Lemma infseq_star_inv:
+    forall a b l s, star a l b -> infseq s a -> infseq (l++s) b.
+  Proof.
+    induction 1; intros.
+  - auto.
+  - inversion H1; subst.
+    assert (b = b0) by (eapply R_functional; eauto). subst b0.
+    apply IHstar; auto.
+  Qed.
+   *)
 
   Lemma infseq_finseq_excl:
     forall a b l s,
@@ -541,13 +545,15 @@ Section Sequences_Traces.
   (** If there exists an infinite sequence of transitions from [a],
   all sequences of transitions arising from [a] are infinite. *)
 
-  (* Lemma infseq_all_seq_inf: *)
-  (*   forall a, infseq a -> all_seq_inf a. *)
-  (* Proof. *)
-  (*   intros. unfold all_seq_inf. intros.  *)
-  (*   assert (infseq b) by (eapply infseq_star_inv; eauto).  *)
-  (*   inversion H1. subst. exists b0; auto. *)
-  (* Qed. *)
+  (*
+  Lemma infseq_all_seq_inf:
+    forall a, infseq a -> all_seq_inf a.
+  Proof.
+    intros. unfold all_seq_inf. intros.
+    assert (infseq b) by (eapply infseq_star_inv; eauto).
+    inversion H1. subst. exists b0; auto.
+  Qed.
+  *)
 
   Lemma plus_infseq :
     forall a b s l,

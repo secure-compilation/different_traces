@@ -330,14 +330,16 @@ Proof.
   eauto. eapply H2. eauto. eauto using stop_irred.
 Qed.
 
-(* Lemma silent_diverges_exclusive: *)
-(*   forall C st st' l s, mach_diverges C st s -> mach_silent C st st' l -> False. *)
-(* Proof. *)
-(*   unfold mach_diverges, mach_silent; intros. *)
-(*   destruct H0 as [pc [stk [H1 H2]]]. *)
-(*   (* eapply infseq_silent_excl. *) *)
-(*   eauto using machine_deterministic. *)
-(* Admitted. *)
+(*
+Lemma silent_diverges_exclusive:
+  forall C st st' l s, mach_diverges C st s -> mach_silent C st st' l -> False.
+Proof.
+  unfold mach_diverges, mach_silent; intros.
+  destruct H0 as [pc [stk [H1 H2]]].
+  (* eapply infseq_silent_excl. *)
+  eauto using machine_deterministic.
+Admitted.
+*)
 
 
 Lemma silent_reacts_exclusive:

@@ -75,49 +75,53 @@ Proof.
   inversion Hn.
 Qed.
 
-(* Lemma terminates_unique: *)
-(*   forall c st st1 st2 l1 l2, *)
-(*     terminates c st st1 l1 -> *)
-(*     terminates c st st2 l2 -> st1 = st2 /\ l1 = l2. *)
-(* Proof. *)
-(*   (* FILL IN HERE *) *)
-(* Admitted. *)
+(*
+Lemma terminates_unique:
+  forall c st st1 st2 l1 l2,
+    terminates c st st1 l1 ->
+    terminates c st st2 l2 -> st1 = st2 /\ l1 = l2.
+Proof.
+  (* FILL IN HERE *)
+Admitted.
 
-(* Lemma terminates_diverges_exclusive: *)
-(*   forall c st st' l s, terminates c st st' l -> diverges c st s -> False. *)
-(* Proof. *)
-(*   (* FILL IN HERE *) *)
-(* Admitted. *)
+Lemma terminates_diverges_exclusive:
+  forall c st st' l s, terminates c st st' l -> diverges c st s -> False.
+Proof.
+  (* FILL IN HERE *)
+Admitted.
+*)
 
-(* (** *** Exercise (3 stars, recommended) *) *)
-(* (** Show that Imp programs cannot go wrong.  Hint: first prove the following *)
-(*   "progress" result for non-[SKIP] commands. *) *)
+(*
+(** *** Exercise (3 stars, recommended) *)
+(** Show that Imp programs cannot go wrong.  Hint: first prove the following *)
+(*   "progress" result for non-[SKIP] commands. *)
 
-(* Lemma cstep_progress: *)
-(*   forall c st, c = SKIP \/ exists c', exists st', exists e, c / st ==> c' / st' ! e. *)
-(* Proof. *)
-(*   induction c; intros. *)
-(*   (* FILL IN HERE *) *)
-(* Admitted. *)
+Lemma cstep_progress:
+  forall c st, c = SKIP \/ exists c', exists st', exists e, c / st ==> c' / st' ! e.
+Proof.
+  induction c; intros.
+  (* FILL IN HERE *)
+Admitted.
 
-(* Definition goes_wrong (c: com) (st: state) : Prop := *)
-(*   exists c', exists st', exists l, *)
-(*   star cstep (c, st) l (c', st') /\ irred cstep (c', st') /\ c' <> SKIP. *)
+Definition goes_wrong (c: com) (st: state) : Prop :=
+  exists c', exists st', exists l,
+  star cstep (c, st) l (c', st') /\ irred cstep (c', st') /\ c' <> SKIP.
 
-(* Lemma not_goes_wrong: *)
-(*   forall c st, ~(goes_wrong c st). *)
-(* Proof. *)
-(*   unfold not, goes_wrong, irred; intros. *)
-(*   (* FILL IN HERE *) *)
-(* Admitted. *)
+Lemma not_goes_wrong:
+  forall c st, ~(goes_wrong c st).
+Proof.
+  unfold not, goes_wrong, irred; intros.
+  (* FILL IN HERE *)
+Admitted.
 
-(* (** As a corollary, using the [infseq_or_finseq] theorem from module [Sequence], we obtain that any IMP program either terminates safely or diverges. *) *)
+(** As a corollary, using the [infseq_or_finseq] theorem from module [Sequence], we obtain that any IMP program either terminates safely or diverges. *)
 
-(* Lemma terminates_or_diverges: *)
-(*   forall c st, (exists st', exists l, terminates c st st' l) \/ (exists s, diverges c st s). *)
-(* Proof. *)
-(*   (* FILL IN HERE *) *)
-(* Admitted. *)
+Lemma terminates_or_diverges:
+  forall c st, (exists st', exists l, terminates c st st' l) \/ (exists s, diverges c st s).
+Proof.
+  (* FILL IN HERE *)
+Admitted.
+*)
 
 (** Sequences of reductions can go under a sequence context, generalizing
   rule [CS_SeqStep]. *)
@@ -585,153 +589,155 @@ Proof.
 - apply IHk. apply CS_SeqStep. auto.
 Qed.
 
-(* Lemma kinfseq_cinfseq: *)
-(*   forall c k st, *)
-(*   infseq kstep (c, k, st) -> *)
-(*   exists c', exists k', exists st', *)
-(*   plus cstep (apply_cont k c, st) (apply_cont k' c', st') *)
-(*   /\ infseq kstep (c', k', st'). *)
-(* Proof. *)
-(*   induction c; intros; inversion H; clear H; subst. *)
-(* - (* skip *) *)
-(*   inversion H0; clear H0; subst. *)
-(* + (* skip seq *) *)
-(*   do 3 econstructor; split. simpl. apply plus_one. apply cstep_apply_cont. apply CS_SeqFinish. auto. *)
-(* + (* skip while *) *)
-(*   do 3 econstructor; split. simpl. apply plus_one. apply cstep_apply_cont. apply CS_SeqFinish. auto. *)
-(* - (* assign *) *)
-(*   inversion H0; clear H0; subst. *)
-(*   do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_Ass. reflexivity. auto. *)
-(* - (* seq *) *)
-(*   inversion H0; clear H0; subst. *)
-(*   change (apply_cont k (c1;;c2)) with (apply_cont (Kseq c2 k) c1).  *)
-(*   eapply IHc1; eauto.  *)
-(* - (* if *) *)
-(*   inversion H0; clear H0; subst. *)
-(* + (* if true *)  *)
-(*   do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_IfTrue; auto. auto. *)
-(* + (* if false *)  *)
-(*   do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_IfFalse; auto. auto. *)
-(* - (* while *) *)
-(*   inversion H0; clear H0; subst. *)
-(* + (* while true *) *)
-(*   exists c; exists (Kwhile b c k); exists st; split. *)
-(*   simpl. eapply plus_left. apply cstep_apply_cont. apply CS_While.  *)
-(*   apply star_one. apply cstep_apply_cont. apply CS_IfTrue; auto.  *)
-(*   auto. *)
-(* + (* while false *) *)
-(*   do 3 econstructor; split. *)
-(*   eapply plus_left. apply cstep_apply_cont. apply CS_While. *)
-(*   apply star_one. apply cstep_apply_cont. apply CS_IfFalse; auto. *)
-(*   auto. *)
-(* Qed. *)
+(*
+Lemma kinfseq_cinfseq:
+  forall c k st,
+  infseq kstep (c, k, st) ->
+  exists c', exists k', exists st',
+  plus cstep (apply_cont k c, st) (apply_cont k' c', st')
+  /\ infseq kstep (c', k', st').
+Proof.
+  induction c; intros; inversion H; clear H; subst.
+- (* skip *)
+  inversion H0; clear H0; subst.
++ (* skip seq *)
+  do 3 econstructor; split. simpl. apply plus_one. apply cstep_apply_cont. apply CS_SeqFinish. auto.
++ (* skip while *)
+  do 3 econstructor; split. simpl. apply plus_one. apply cstep_apply_cont. apply CS_SeqFinish. auto.
+- (* assign *)
+  inversion H0; clear H0; subst.
+  do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_Ass. reflexivity. auto.
+- (* seq *)
+  inversion H0; clear H0; subst.
+  change (apply_cont k (c1;;c2)) with (apply_cont (Kseq c2 k) c1).
+  eapply IHc1; eauto.
+- (* if *)
+  inversion H0; clear H0; subst.
++ (* if true *)
+  do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_IfTrue; auto. auto.
++ (* if false *)
+  do 3 econstructor; split. apply plus_one. apply cstep_apply_cont. apply CS_IfFalse; auto. auto.
+- (* while *)
+  inversion H0; clear H0; subst.
++ (* while true *)
+  exists c; exists (Kwhile b c k); exists st; split.
+  simpl. eapply plus_left. apply cstep_apply_cont. apply CS_While.
+  apply star_one. apply cstep_apply_cont. apply CS_IfTrue; auto.
+  auto.
++ (* while false *)
+  do 3 econstructor; split.
+  eapply plus_left. apply cstep_apply_cont. apply CS_While.
+  apply star_one. apply cstep_apply_cont. apply CS_IfFalse; auto.
+  auto.
+Qed.
 
-(* (** We now prepare for the reverse diagram: decomposing infinite sequences of *)
+(** We now prepare for the reverse diagram: decomposing infinite sequences of *)
 (*   [cstep] transitions in terms of [kstep] transitions.  First, a technical *)
-(*   inversion lemma on [cstep] reductions over commands of the form [apply_cont k c]. *) *)
+(*   inversion lemma on [cstep] reductions over commands of the form [apply_cont k c]. *)
 
-(* Inductive cstep_apply_cont_cases: cont -> com -> state -> com -> state -> Prop := *)
-(*   | cacc_base: forall c1 st1 c2 st2 k, *)
-(*       cstep (c1, st1) (c2, st2) -> *)
-(*       cstep_apply_cont_cases k c1 st1 (apply_cont k c2) st2 *)
-(*   | cacc_skip_seq: forall c k st, *)
-(*       cstep_apply_cont_cases (Kseq c k) SKIP st (apply_cont k c) st *)
-(*   | cacc_skip_while: forall b c k st, *)
-(*       cstep_apply_cont_cases (Kwhile b c k) SKIP st (apply_cont k (WHILE b DO c END)) st. *)
+Inductive cstep_apply_cont_cases: cont -> com -> state -> com -> state -> Prop :=
+  | cacc_base: forall c1 st1 c2 st2 k,
+      cstep (c1, st1) (c2, st2) ->
+      cstep_apply_cont_cases k c1 st1 (apply_cont k c2) st2
+  | cacc_skip_seq: forall c k st,
+      cstep_apply_cont_cases (Kseq c k) SKIP st (apply_cont k c) st
+  | cacc_skip_while: forall b c k st,
+      cstep_apply_cont_cases (Kwhile b c k) SKIP st (apply_cont k (WHILE b DO c END)) st.
 
-(* Lemma invert_cstep_apply_cont: *)
-(*   forall k c st c' st', *)
-(*   cstep (apply_cont k c, st) (c', st') -> *)
-(*   cstep_apply_cont_cases k c st c' st'. *)
-(* Proof. *)
-(*   induction k; simpl; intros.  *)
-(* - (* Kstop *) *)
-(*   change c' with (apply_cont Kstop c'). apply cacc_base; auto. *)
-(* - (* Kseq *) *)
-(*   specialize (IHk _ _ _ _ H). inversion IHk; subst. *)
-(*   + (* base *) *)
-(*     inversion H0; clear H0; subst. *)
-(*     * (* seq step *) *)
-(*       change (apply_cont k (c1';;c)) with (apply_cont (Kseq c k) c1').  *)
-(*       apply cacc_base; auto. *)
-(*     * (* seq finish *) *)
-(*       apply cacc_skip_seq. *)
-(* - (* Kwhile *) *)
-(*   specialize (IHk _ _ _ _ H). inversion IHk; subst. *)
-(*   + (* base *) *)
-(*     inversion H0; clear H0; subst. *)
-(*     * (* seq step *) *)
-(*       change (apply_cont k (c1';;WHILE b DO c END)) with (apply_cont (Kwhile b c k) c1').  *)
-(*       apply cacc_base; auto. *)
-(*     * (* seq finish *) *)
-(*       apply cacc_skip_while. *)
-(* Qed. *)
+Lemma invert_cstep_apply_cont:
+  forall k c st c' st',
+  cstep (apply_cont k c, st) (c', st') ->
+  cstep_apply_cont_cases k c st c' st'.
+Proof.
+  induction k; simpl; intros.
+- (* Kstop *)
+  change c' with (apply_cont Kstop c'). apply cacc_base; auto.
+- (* Kseq *)
+  specialize (IHk _ _ _ _ H). inversion IHk; subst.
+  + (* base *)
+    inversion H0; clear H0; subst.
+    * (* seq step *)
+      change (apply_cont k (c1';;c)) with (apply_cont (Kseq c k) c1').
+      apply cacc_base; auto.
+    * (* seq finish *)
+      apply cacc_skip_seq.
+- (* Kwhile *)
+  specialize (IHk _ _ _ _ H). inversion IHk; subst.
+  + (* base *)
+    inversion H0; clear H0; subst.
+    * (* seq step *)
+      change (apply_cont k (c1';;WHILE b DO c END)) with (apply_cont (Kwhile b c k) c1').
+      apply cacc_base; auto.
+    * (* seq finish *)
+      apply cacc_skip_while.
+Qed.
 
-(* Lemma cinfseq_kinfseq: *)
-(*   forall c k st, *)
-(*   infseq cstep (apply_cont k c, st) -> *)
-(*   exists c', exists k', exists st', *)
-(*   plus kstep (c, k, st) (c', k', st') *)
-(*   /\ infseq cstep (apply_cont k' c', st'). *)
-(* Proof. *)
-(*   intros. inversion H; clear H; subst. destruct b as [c' st']. *)
-(*   specialize (invert_cstep_apply_cont _ _ _ _ _ H0). intros CASES; inversion CASES; subst. *)
-(* - (* base *) *)
-(*   clear H0 CASES. revert k H1. dependent induction H; intros. *)
-(*   + (* assign *) *)
-(*     do 3 econstructor; split. apply plus_one. apply KS_Ass. reflexivity. auto. *)
-(*   + (* seq step *) *)
-(*     destruct (IHcstep _ _ _ _ eq_refl eq_refl (Kseq c0 k) H1) *)
-(*     as [c'' [k'' [st'' [A B]]]]. *)
-(*     exists c''; exists k''; exists st''; split; auto. *)
-(*     eapply plus_left. apply KS_Seq. apply plus_star. auto.  *)
-(*   + (* seq finish *) *)
-(*     do 3 econstructor; split. *)
-(*     eapply plus_left. apply KS_Seq. apply star_one. apply KS_SkipSeq.  *)
-(*     auto. *)
-(*   + (* if true *) *)
-(*     do 3 econstructor; split. apply plus_one. apply KS_IfTrue. auto. auto. *)
-(*   + (* if false *) *)
-(*     do 3 econstructor; split. apply plus_one. apply KS_IfFalse. auto. auto. *)
-(*   + (* while *) *)
-(*     inversion H1; clear H1; subst. destruct b0 as [c'' st''].  *)
-(*     specialize (invert_cstep_apply_cont _ _ _ _ _ H). intros CASES; inversion CASES; clear CASES; subst. *)
-(*     inversion H1; clear H1; subst. *)
-(*     * (* while true *) *)
-(*       do 3 econstructor; split. apply plus_one. apply KS_WhileTrue. auto. auto. *)
-(*     * (* while false *) *)
-(*       do 3 econstructor; split. apply plus_one. apply KS_WhileFalse. auto. auto. *)
-(* - (* skip seq *) *)
-(*   do 3 econstructor; split. apply plus_one. apply KS_SkipSeq. auto. *)
-(* - (* skip while *) *)
-(*   do 3 econstructor; split. apply plus_one. apply KS_SkipWhile. auto. *)
-(* Qed. *)
+Lemma cinfseq_kinfseq:
+  forall c k st,
+  infseq cstep (apply_cont k c, st) ->
+  exists c', exists k', exists st',
+  plus kstep (c, k, st) (c', k', st')
+  /\ infseq cstep (apply_cont k' c', st').
+Proof.
+  intros. inversion H; clear H; subst. destruct b as [c' st'].
+  specialize (invert_cstep_apply_cont _ _ _ _ _ H0). intros CASES; inversion CASES; subst.
+- (* base *)
+  clear H0 CASES. revert k H1. dependent induction H; intros.
+  + (* assign *)
+    do 3 econstructor; split. apply plus_one. apply KS_Ass. reflexivity. auto.
+  + (* seq step *)
+    destruct (IHcstep _ _ _ _ eq_refl eq_refl (Kseq c0 k) H1)
+    as [c'' [k'' [st'' [A B]]]].
+    exists c''; exists k''; exists st''; split; auto.
+    eapply plus_left. apply KS_Seq. apply plus_star. auto.
+  + (* seq finish *)
+    do 3 econstructor; split.
+    eapply plus_left. apply KS_Seq. apply star_one. apply KS_SkipSeq.
+    auto.
+  + (* if true *)
+    do 3 econstructor; split. apply plus_one. apply KS_IfTrue. auto. auto.
+  + (* if false *)
+    do 3 econstructor; split. apply plus_one. apply KS_IfFalse. auto. auto.
+  + (* while *)
+    inversion H1; clear H1; subst. destruct b0 as [c'' st''].
+    specialize (invert_cstep_apply_cont _ _ _ _ _ H). intros CASES; inversion CASES; clear CASES; subst.
+    inversion H1; clear H1; subst.
+    * (* while true *)
+      do 3 econstructor; split. apply plus_one. apply KS_WhileTrue. auto. auto.
+    * (* while false *)
+      do 3 econstructor; split. apply plus_one. apply KS_WhileFalse. auto. auto.
+- (* skip seq *)
+  do 3 econstructor; split. apply plus_one. apply KS_SkipSeq. auto.
+- (* skip while *)
+  do 3 econstructor; split. apply plus_one. apply KS_SkipWhile. auto.
+Qed.
 
-(* (** The desired equivalence between the two notions of divergence then follows *)
-(*   from the coinduction principles given in module [Sequence]. *) *)
+(** The desired equivalence between the two notions of divergence then follows *)
+(*   from the coinduction principles given in module [Sequence]. *)
 
-(* Theorem kdiverges_iff_diverges: *)
-(*   forall c st, kdiverges c st <-> diverges c st. *)
-(* Proof. *)
-(*   intros; split; intros. *)
-(* - (* kdiverges -> diverges *) *)
-(*   unfold diverges.  *)
-(*   apply infseq_coinduction_principle_2 with *)
-(*     (X := fun c_st => exists c, exists k, exists st, *)
-(*                       c_st = (apply_cont k c, st) /\ infseq kstep (c, k, st)). *)
-(*   intros. destruct H0 as [c1 [k1 [st1 [EQ ISEQ]]]]. *)
-(*   destruct (kinfseq_cinfseq _ _ _ ISEQ) as [c2 [k2 [st2 [CSTEPS ISEQ']]]].  *)
-(*   exists (apply_cont k2 c2, st2); split. *)
-(*   subst a; auto. *)
-(*   exists c2; exists k2; exists st2; auto. *)
-(*   exists c; exists Kstop; exists st; auto. *)
-(* - (* diverges -> kdiverges *) *)
-(*   unfold kdiverges.  *)
-(*   apply infseq_coinduction_principle_2 with *)
-(*     (X := fun c_k_st => *)
-(*             match c_k_st with (c, k, st) => infseq cstep (apply_cont k c, st) end). *)
-(*   intros [[c1 k1] st1] ISEQ.  *)
-(*   destruct (cinfseq_kinfseq _ _ _ ISEQ) as [c2 [k2 [st2 [KSTEPS ISEQ']]]]. *)
-(*   exists (c2, k2, st2); auto. *)
-(*   auto. *)
-(* Qed. *)
+Theorem kdiverges_iff_diverges:
+  forall c st, kdiverges c st <-> diverges c st.
+Proof.
+  intros; split; intros.
+- (* kdiverges -> diverges *)
+  unfold diverges.
+  apply infseq_coinduction_principle_2 with
+    (X := fun c_st => exists c, exists k, exists st,
+                      c_st = (apply_cont k c, st) /\ infseq kstep (c, k, st)).
+  intros. destruct H0 as [c1 [k1 [st1 [EQ ISEQ]]]].
+  destruct (kinfseq_cinfseq _ _ _ ISEQ) as [c2 [k2 [st2 [CSTEPS ISEQ']]]].
+  exists (apply_cont k2 c2, st2); split.
+  subst a; auto.
+  exists c2; exists k2; exists st2; auto.
+  exists c; exists Kstop; exists st; auto.
+- (* diverges -> kdiverges *)
+  unfold kdiverges.
+  apply infseq_coinduction_principle_2 with
+    (X := fun c_k_st =>
+            match c_k_st with (c, k, st) => infseq cstep (apply_cont k c, st) end).
+  intros [[c1 k1] st1] ISEQ.
+  destruct (cinfseq_kinfseq _ _ _ ISEQ) as [c2 [k2 [st2 [KSTEPS ISEQ']]]].
+  exists (c2, k2, st2); auto.
+  auto.
+Qed.
+*)
