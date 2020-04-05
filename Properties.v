@@ -367,3 +367,70 @@ Proof.
   exists γ1, γ2. split; apply: subset_trans; eauto.
   split; apply: subset_trans; eauto.
 Qed.
+
+(*****************************************************************************)
+(** *2relSafety*)
+(*****************************************************************************)
+
+Definition Safety2 {E : Events} {Es : Endstates}
+                   (R: (@trace E Es) * (@trace E Es) -> Prop) : Prop :=
+  forall t1 t2, ~ R (t1, t2) ->
+           exists m1 m2, (prefix m1 t1) /\ (prefix m2 t2) /\
+                    (forall t1' t2', (prefix m1 t1') -> (prefix m2 t2') -> ~ R (t1', t2')). 
+
+(*****************************************************************************)
+(** *2relSafe closure operator*)
+(*****************************************************************************)
+
+Definition s2Cl {E : Events} {Es : Endstates}
+                (R: (@trace E Es) * (@trace E Es) -> Prop) :
+                (@trace E Es) * (@trace E Es) -> Prop  :=
+  fun t => forall B, Safety2 B -> R ⊆ B -> B t.
+
+Lemma s2Cl_bigger {E : Events} {Es : Endstates}
+                  (R: (@trace E Es) * (@trace E Es) -> Prop) :  R ⊆ s2Cl R.
+Proof. by firstorder. Qed.
+
+Lemma s2Cl_Safety2 {E : Events} {Es : Endstates}
+                   (π: (@trace E Es) * (@trace E Es) -> Prop): Safety2 (s2Cl π).
+Proof.
+  move => t1 t2 not_π_t.
+  move/not_forall_ex_not: not_π_t. move => [π' H].
+  move/not_imp: H. move => [safety_π' H].
+  move/not_imp: H. move => [π_leq_π' not_π'_t].
+  destruct (safety_π' t1 t2 not_π'_t) as [m1 [m2 [m1_leq_t1 [m2_leq_t2 m_wit]]]].
+  exists m1, m2. split; auto. split; auto. move => t1' t2' m1_leq_t' m2_leqt2' Hf.
+  apply: (m_wit t1' t2'); try assumption. by apply: Hf.
+Qed.
+
+Lemma s2Cl_id_on_Safety2 {E : Events} {Es : Endstates}
+                         (π: (@trace E Es) * (@trace E Es) -> Prop) :
+  Safety2 π -> s2Cl π = π.
+Proof.
+  move => Safety_π. apply: functional_extensionality => t.
+  apply: prop_extensionality.
+    by firstorder.
+Qed.
+
+Lemma s2Cl_smallest {E : Events} {Es : Endstates}
+                    (π: (@trace E Es) * (@trace E Es) -> Prop) :
+    forall S, Safety2 S -> π ⊆ S -> s2Cl π ⊆ S.
+Proof. by firstorder. Qed.
+
+Lemma s2Cl_mono {E : Events} {Es : Endstates} : monotone (@s2Cl E Es).
+Proof.
+  move => π1 π2 sub t cl2_t.
+  apply: cl2_t.
+  apply: s2Cl_Safety2. apply: subset_trans. exact: sub. exact: s2Cl_bigger.
+Qed.
+
+Lemma s2Cl_idmp {E : Events} {Es : Endstates} : idempotent (@s2Cl E Es).
+Proof. move => π. apply: s2Cl_id_on_Safety2. apply: s2Cl_Safety2. Qed.
+
+
+Definition safety2_uco {E : Events} {Es : Endstates} := Build_Uco (@s2Cl_mono E Es)
+                                                                (@s2Cl_idmp E Es)
+                                                                (@s2Cl_bigger E Es).
+
+
+

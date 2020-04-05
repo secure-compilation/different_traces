@@ -41,6 +41,8 @@ Robust2relTraceProperty.v
 Robust2relTraceCriterion.v
 Robust2relSSCHPreservation.v
 Robust2relSSCHCriterion.v
+Robust2relSafetyProperty.v
+Robust2relSafetyCriterion.v
 
 ResourceExhaustion.v
 
