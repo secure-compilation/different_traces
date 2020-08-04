@@ -1,6 +1,6 @@
 # Trace-Relating Compiler Correctness and Secure Compilation #
 
-This branch contains the Coq development of the paper
+This repo contains the Coq development of the paper
 - **[Trace-relating compiler correctness and secure compilation](https://arxiv.org/abs/1907.05320)**.
   Carmine Abate, Roberto Blanco, Ștefan Ciobâcă, Adrien Durier, Deepak Garg,
   Cătălin Hriţcu, Marco Patrignani, Éric Tanter, and Jérémy Thibault.
