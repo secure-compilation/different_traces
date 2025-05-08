@@ -20,3 +20,8 @@ and requires the following Coq library:
 
 This Coq development is licensed under the Apache License, Version 2.0 (see
 `LICENSE`) unless overridden by another license file.
+
+### Main Contributors ###
+
+This Coq development's main contributors include Carmine Abate, Roberto Blanco, Ștefan Ciobâcă, 
+Adrien Durier, Deepak Garg, Cătălin Hriţcu, Marco Patrignani, Éric Tanter, and Jérémy Thibault.
